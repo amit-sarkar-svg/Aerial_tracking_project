@@ -1,0 +1,18 @@
+# =================== CORE DEEP LEARNING ===================
+
+# PyTorch + CPU wheels (must be installed manually first)
+# Run this manually:
+# pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
+
+# =================== YOLOv8 ===================
+ultralytics==8.1.0
+
+# =================== Computer Vision ===================
+opencv-python==4.9.0.80
+numpy==1.26.4
+imutils==0.5.4
+
+# =================== Optional (safe) ===================
+# pillow
+# matplotlib
+# psutil
