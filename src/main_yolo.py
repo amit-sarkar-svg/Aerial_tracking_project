@@ -1,4 +1,6 @@
-# src/main_yolo.py
+# Updated main_yolo.py with Auto-Recenter + Auto-Relock System
+# Fully merged with your previous YOLO + Kalman + PID logic
+
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -12,7 +14,6 @@ from src.trackers.kalman_filter import create_kalman
 from src.trackers.pid_controller import PID
 from src.utils.draw_utils import draw_bbox, draw_center
 from src.utils.config import PID_KP, PID_KI, PID_KD
-
 from src.detectors.yolo_detector import YOLODetector
 
 # ----------------------------
@@ -20,7 +21,6 @@ from src.detectors.yolo_detector import YOLODetector
 # ----------------------------
 def create_tracker_by_name(name='csrt'):
     name = name.lower()
-    # Compatibility across OpenCV versions
     if name == 'csrt' and hasattr(cv2, 'TrackerCSRT_create'):
         return cv2.TrackerCSRT_create()
     if name == 'kcf' and hasattr(cv2, 'TrackerKCF_create'):
@@ -29,51 +29,55 @@ def create_tracker_by_name(name='csrt'):
         return cv2.TrackerMedianFlow_create()
     if name == 'mosse' and hasattr(cv2, 'TrackerMOSSE_create'):
         return cv2.TrackerMOSSE_create()
-    # Fallback: try legacy API
     try:
         return cv2.TrackerCSRT_create()
     except Exception:
-        # Newer OpenCV versions (4.5+) sometimes require cv2.TrackerCSRT_create
         return None
 
 # ----------------------------
-# Main
+# Main System
 # ----------------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source", type=str, default="0", help="camera index or video path")
-    ap.add_argument("--device", type=str, default="cpu", choices=["cpu","cuda"], help="device for YOLO")
-    ap.add_argument("--model", type=str, default="yolov8n.pt", help="YOLO model (name or path)")
-    ap.add_argument("--class-id", type=int, default=None, help="class id to track (None => any class). Example: 0 for person")
-    ap.add_argument("--tracker", type=str, default="csrt", help="opencv tracker between detections (csrt,kcf,mosse)")
-    ap.add_argument("--detect-every", type=int, default=10, help="run YOLO every N frames")
-    ap.add_argument("--conf", type=float, default=0.35, help="YOLO confidence threshold")
+    ap.add_argument("--source", type=str, default="0")
+    ap.add_argument("--device", type=str, default="cpu")
+    ap.add_argument("--model", type=str, default="yolov8n.pt")
+    ap.add_argument("--class-id", type=int, default=None)
+    ap.add_argument("--tracker", type=str, default="csrt")
+    ap.add_argument("--detect-every", type=int, default=10)
+    ap.add_argument("--conf", type=float, default=0.35)
     args = ap.parse_args()
 
-    # initialize detector & params
+    # YOLO detector
     yolo = YOLODetector(model_name=args.model, device=args.device, conf_threshold=args.conf)
     DETECT_EVERY = max(1, int(args.detect_every))
+
     tracker = None
     bbox = None
     frames_since_detect = DETECT_EVERY
 
-    # video/camera
+    # Video input
     src = args.source
-    if src.isdigit():
-        src = int(src)
+    if src.isdigit(): src = int(src)
     cap = get_stream(src)
     ret, frame = cap.read()
     if not ret:
-        print("ERROR: cannot read source:", args.source)
+        print("ERROR: Cannot read source.")
         return
 
     h, w = frame.shape[:2]
     cx_img, cy_img = w // 2, h // 2
 
-    # Kalman & PID
+    # Kalman and PID
     kf = create_kalman()
     pid_x = PID(PID_KP, PID_KI, PID_KD)
     pid_y = PID(PID_KP, PID_KI, PID_KD)
+
+    # Auto-Recenter Variables
+    lost_counter = 0
+    AUTO_LOST_FRAMES = 8
+    search_x, search_y = cx_img, cy_img
+    forces_redetect = False
 
     frame_idx = 0
     fps_time = time.time()
@@ -86,91 +90,118 @@ def main():
 
         detected_bbox = None
 
-        # Decide whether to run detector
-        if tracker is None or frames_since_detect >= DETECT_EVERY:
-            # Run YOLO detection on this frame
+        # ----------------------------
+        # 1. DETECTION (YOLO)
+        # ----------------------------
+        if tracker is None or frames_since_detect >= DETECT_EVERY or forces_redetect:
             dets = yolo.detect(frame, classes=None if args.class_id is None else [args.class_id])
-            # pick highest confidence detection (you can customize selection)
             if dets:
                 best = max(dets, key=lambda d: d['conf'])
                 detected_bbox = best['bbox']
-                # (re)initialize tracker
-                t = create_tracker_by_name(args.tracker)
-                if t is not None:
+                tracker = create_tracker_by_name(args.tracker)
+
+                if tracker is not None:
                     try:
-                        t.init(frame, tuple(detected_bbox))
-                        tracker = t
-                        bbox = detected_bbox
-                    except Exception:
+                        tracker.init(frame, tuple(detected_bbox))
+                    except:
                         tracker = None
-                        bbox = detected_bbox
-                else:
-                    tracker = None
-                    bbox = detected_bbox
+
+                bbox = detected_bbox
                 frames_since_detect = 0
+                lost_counter = 0
+                forces_redetect = False
+                search_x, search_y = cx_img, cy_img  # reset search point
             else:
-                # nothing detected
                 frames_since_detect += 1
+
+        # ----------------------------
+        # 2. TRACKER UPDATE
+        # ----------------------------
         else:
-            # update tracker
             if tracker is not None:
                 ok, tracked_box = tracker.update(frame)
                 if ok:
-                    x,y,w_box,h_box = [int(v) for v in tracked_box]
-                    bbox = (x,y,w_box,h_box)
+                    x, y, w_box, h_box = [int(v) for v in tracked_box]
+                    bbox = (x, y, w_box, h_box)
                     detected_bbox = bbox
                     frames_since_detect += 1
                 else:
-                    # tracker lost
                     tracker = None
                     bbox = None
                     frames_since_detect = DETECT_EVERY
 
-        # If detection/tracking produced a bbox, correct kalman
+        # ----------------------------
+        # 3. TRACK LOST HANDLING
+        # ----------------------------
+        if detected_bbox is None:
+            lost_counter += 1
+        else:
+            lost_counter = 0
+
+        is_lost = lost_counter > AUTO_LOST_FRAMES
+
+        # ----------------------------
+        # 4. KALMAN UPDATE/PREDICT
+        # ----------------------------
         if detected_bbox is not None:
-            x,y,w_box,h_box = detected_bbox
-            cx = x + w_box/2.0
-            cy = y + h_box/2.0
-            measurement = np.array([[cx], [cy]], dtype=np.float32)
-            kf.correct(measurement)
-
-        # Predict (smoothed position)
+            x, y, w_box, h_box = detected_bbox
+            cx = x + w_box/2
+            cy = y + h_box/2
+            kf.correct(np.array([[cx], [cy]], dtype=np.float32))
         pred = kf.predict()
-        px = int(pred[0][0])
-        py = int(pred[1][0])
+        px, py = int(pred[0][0]), int(pred[1][0])
 
-        # Draw visuals
+        # ----------------------------
+        # 5. AUTO-RECENTER + AUTO-RELOCK
+        # ----------------------------
+        if is_lost:
+            vx = float(kf.statePost[2])
+            vy = float(kf.statePost[3])
+            mag = max(1, abs(vx) + abs(vy))
+            vx, vy = vx/mag, vy/mag
+
+            search_x += int(vx * 25)
+            search_y += int(vy * 25)
+            search_x = max(0, min(w - 1, search_x))
+            search_y = max(0, min(h - 1, search_y))
+
+            cv2.circle(frame, (search_x, search_y), 8, (0, 255, 255), -1)
+            forces_redetect = True
+
+        # ----------------------------
+        # 6. DRAW VISUALS
+        # ----------------------------
         if bbox:
             draw_bbox(frame, bbox)
-            # use last measured center if available
             if detected_bbox is not None:
-                draw_center(frame, int(cx), int(cy), color=(0,255,0))
-        draw_center(frame, px, py, color=(255,0,0))       # Kalman
-        draw_center(frame, cx_img, cy_img, color=(0,0,255)) # image center
+                draw_center(frame, int(cx), int(cy), (0,255,0))
 
-        # PID control commands
+        draw_center(frame, px, py, (255,0,0))   # Kalman predicted
+        draw_center(frame, cx_img, cy_img, (0,0,255))  # Frame center
+
+        # ----------------------------
+        # 7. PID CONTROL
+        # ----------------------------
         err_x = px - cx_img
         err_y = py - cy_img
         ctrl_x = pid_x.compute(err_x)
         ctrl_y = pid_y.compute(err_y)
 
-        # overlay text: object name/conf if available
-        info_text = f"ctrl_x={ctrl_x:.2f} ctrl_y={ctrl_y:.2f}"
-        cv2.putText(frame, info_text, (10,25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
+        cv2.putText(frame, f"ctrl_x={ctrl_x:.2f} ctrl_y={ctrl_y:.2f}", (10,25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
+        cv2.putText(frame, f"Lost={is_lost}", (10,55), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,255), 2)
 
-        # FPS calc
+        # FPS
         if frame_idx % 15 == 0:
             now = time.time()
-            fps = 15.0 / (now - fps_time)
+            fps = 15 / (now - fps_time)
             fps_time = now
-            cv2.putText(frame, f"FPS:{fps:.1f}", (10,50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
+            cv2.putText(frame, f"FPS:{fps:.1f}", (10,85), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 2)
 
-        cv2.imshow("YOLO-Kalman-PID Tracker", frame)
+        cv2.imshow("YOLO-Kalman-PID + AutoRelock", frame)
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
         if key == ord('d'):
-            # force detection on next frame
             frames_since_detect = DETECT_EVERY
 
     cap.release()
