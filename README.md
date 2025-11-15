@@ -1,114 +1,82 @@
-# 🚁 Aerial Object Tracking System
-### **YOLOv8 + OpenCV Tracker + Kalman Filter + PID Controller + Auto-Recenter & Auto-Relock**
+# 🚁 Aerial Object Tracking System (Multi-Object Version)
+### **YOLOv8 + DeepSORT + Kalman + PID + Distance/Velocity/Angle Estimation + CSV Logging + Graphs**
 
-A fully modular **real-time object tracking pipeline** designed for **aerial robotics**, **computer vision**, and **drone follow-me systems**.
+A powerful **multi-object tracking system** designed for **aerial robotics**, **drone follow-me systems**, and **computer vision research**, now supporting:
 
-This system combines:
-- ✔ YOLOv8 Object Detection  
-- ✔ OpenCV Trackers (CSRT / KCF / MOSSE)  
-- ✔ Kalman Filter motion prediction  
-- ✔ PID-based alignment control  
-- ✔ **Auto-Recenter + Auto-Relock System** (drone-style recovery)
-
-The system tracks any object **smoothly**, **intelligently**, and **recovers automatically** when tracking is lost.
+- ✔ Multi-object tracking with **DeepSORT**
+- ✔ YOLOv8 detection
+- ✔ Kalman smoothing per object
+- ✔ PID alignment per object
+- ✔ Distance estimation (meters)
+- ✔ Velocity estimation (m/s)
+- ✔ Angle estimation (degrees)
+- ✔ Per-object mini distance graph
+- ✔ Per-object CSV logging
+- ✔ Auto-recenter + re-detect (single-target mode)
 
 ---
 
 # ✨ Features
 
-### 🎯 **YOLOv8 Real-Time Object Detection**
-High-speed detection of:
+### 🎯 **YOLOv8 Real-Time Multi-Class Detection**
+Detects all COCO classes:
 - People
-- Vehicles
+- Cars
+- Bikes
 - Balls
-- Any custom YOLO class
-
-Supports **CPU** and **CUDA GPU**.
-
----
-
-### 🎯 **OpenCV Trackers Between YOLO Frames**
-Improves FPS while keeping accuracy.
-- CSRT (accurate)
-- KCF (fast)
-- MOSSE (very fast)
+- Animals
+- Custom-trained models
 
 ---
 
-### 🎯 **Kalman Filter Smoothing**
-- Predicts object motion
-- Removes jitter
-- Works even when YOLO misses frames
-- Provides velocity for Auto-Relock
+### 🎯 **DeepSORT Multi-Object Tracking**
+Each object gets:
+- Unique **Track ID**
+- Motion-based re-identification
+- Stable tracking after occlusions
+- Smooth motion via Kalman filter
 
 ---
 
-### 🎯 **PID Controller**
-Used for stable object-centering control:
-- Horizontal movement
-- Vertical movement
+### 🎯 **Distance, Velocity & Angle Estimation**
+For every object:
+- **Distance** (meters)
+- **Velocity** (meters per sec)
+- **Angle** relative to camera center
 
-Perfect for:
-- Drone gimbal
-- Robot steering
-- Simulation
+Formula:
+```
+Distance = (RealWidth * FocalLength) / PixelWidth
+Angle = atan((cx - center_x) / focal_length)
+```
 
 ---
 
-### 🆕 **Auto-Recenter + Auto-Relock System**
-This new recovery module ensures continuous tracking.
-
-When the object is **lost**:
-- Uses **Kalman-predicted motion direction**
-- Moves a **search point** in that direction
-- Forces YOLO to re-detect
-- Automatically **re-acquires (relocks)** the target
-
-Exactly like **DJI Follow-Me** drones.
+### 🎯 **Right-Side Mini Graphs**
+Each tracked object shows:
+- Recent distance history
+- Smooth trend line
 
 ---
 
-# 🔍 Visual Meaning of Tracking Dots
-
-| Color | Meaning | Source |
-|-------|---------|--------|
-| 🟩 Green | Real detection | YOLO / Tracker |
-| 🔵 Blue | Kalman predicted center | Smoothed center |
-| 🟡 Yellow | Auto-recenter search point | Recovery mode |
-| 🔴 Red | Frame center | PID target |
+### 🎯 **CSV Logging (Track-wise)**
+Saved to:
+```
+src/logs/multi_log.csv
+```
+Columns:
+```
+timestamp, frame, track_id, class_id, class_name,
+distance_m, velocity_m_s, angle_deg
+```
 
 ---
 
-# 🖼 Tracking + Auto-Relock Diagram
-
-### **1. Normal Tracking**
-```
-+-----------------------------+
-|             🔴             |
-|                             |
-|            🔵               |
-|             🟩              |
-+-----------------------------+
-```
-
-### **2. Lost Tracking → Auto-Recenter**
-```
-Last known direction → →
-
-+-----------------------------+
-|                  🟡        |
-|         (no detection)     |
-+-----------------------------+
-```
-
-### **3. YOLO Re-Detects → Relock**
-```
-+-----------------------------+
-|              🔴             |
-|              🔵             |
-|              🟩             |
-+-----------------------------+
-```
+### 🟡 Auto-Recenter + Auto-Relock (Single Object Mode)
+When using `main_yolo.py`:
+- Predicts where object moved
+- Re-detects automatically
+- Perfect for drone-style follow-me
 
 ---
 
@@ -117,17 +85,31 @@ Last known direction → →
 aerial_tracking_project/
 │
 ├── src/
+│   ├── main_yolo.py                 # single-object tracker
+│   ├── main_yolo_multi.py           # multi-object tracker
+│   ├── calibrate.py                 # focal calibration
+│   │
 │   ├── detectors/
 │   │   └── yolo_detector.py
+│   │
 │   ├── trackers/
 │   │   ├── kalman_filter.py
-│   │   └── pid_controller.py
+│   │   ├── pid_controller.py
+│   │   └── deep_sort/
+│   │       ├── deep_sort.py
+│   │       ├── detection.py
+│   │       ├── track.py
+│   │       └── nn_matching.py
+│   │
 │   ├── utils/
-│   │   ├── camera_stream.py
 │   │   ├── draw_utils.py
+│   │   ├── graph_utils.py
+│   │   ├── camera_stream.py
+│   │   ├── object_sizes.py
 │   │   └── config.py
-│   ├── main_yolo.py
-│   └── main.py
+│   │
+│   └── logs/
+│       └── multi_log.csv
 │
 ├── videos/
 ├── requirements.txt
@@ -139,74 +121,108 @@ aerial_tracking_project/
 
 # ⚙️ Installation
 
-### **1. Clone the Repo**
+### 1️⃣ Clone Repository
 ```
-git clone <your-repo-url>
+git clone <repo-url>
 cd aerial_tracking_project
 ```
 
-### **2. Activate venv**
+### 2️⃣ Activate Virtual Environment
 ```
 venv\Scripts\activate
-```    
+```
 
-### **3. Install Dependencies**
+### 3️⃣ Install Requirements
 ```
 pip install -r requirements.txt
 ```
 
 ---
 
-# ▶️ Run the Tracker
+# ▶️ Run Multi-Object Tracker
 
-### **Default Webcam**
+### Use webcam:
+```
+python src/main_yolo_multi.py --source 0
+```
+
+### Use video file:
+```
+python src/main_yolo_multi.py --source videos/test.mp4
+```
+
+### With calibrated focal length:
+```
+python src/main_yolo_multi.py --source 0 --focal 930
+```
+
+### Lower confidence threshold:
+```
+python src/main_yolo_multi.py --conf 0.25
+```
+
+---
+
+# ▶️ Run Single-Object Tracker (Auto-Relock)
 ```
 python src/main_yolo.py --source 0
 ```
 
-### **Track Only a Specific Class**
-Example: person (class 0)
+Force detection every N frames:
 ```
-python src/main_yolo.py --class-id 0 --source 0
-```
-
-### **Use a Faster OpenCV Tracker**
-```
-python src/main_yolo.py --tracker mosse
+python src/main_yolo.py --detect-every 5
 ```
 
-### **Lower YOLO Frequency (improves FPS)**
+Track a specific class:
 ```
-python src/main_yolo.py --detect-every 20
+python src/main_yolo.py --class-id 0
 ```
 
 ---
 
-# 🔧 Configuration
-Modify `src/utils/config.py` to adjust:
-- PID gains (KP, KI, KD)
-- Detection thresholds
-- Auto-Recenter parameters
+# 🎯 Focal Calibration
+```
+python src/calibrate.py
+```
+Steps:
+1. Enter real object width (in meters)
+2. Enter real distance (meters)
+3. Draw bounding box
+4. Script outputs focal length
+5. Save & use in multi-object tracker
 
 ---
 
-# 🧠 How It Works
+# 🖼 Visual Guide
 
-### **1. YOLO detects object (every N frames).**
-### **2. OpenCV tracker follows in-between.**
-### **3. Kalman filter predicts motion and smooths output.**
-### **4. PID computes corrections to center the object.**
-### **5. If object is lost → Auto-Recenter + Auto-Relock recovers it.**
+| Symbol | Meaning |
+|--------|---------|
+| 🟩 | Real detection center |
+| 🔵 | Kalman predicted center |
+| 🎨 | Random color per track ID |
+| 📈 | Mini graph (distance history) |
+| 🔴 | Camera center |
 
 ---
 
-# 🚀 Future Enhancements
-- Multi-object tracking (DeepSORT / ByteTrack)
-- Distance estimation (3D tracking)
-- PX4 SITL drone control
-- Real gimbal servo control
-- ONNX/TensorRT acceleration
-- GUI Panel (Tkinter / PyQt)
+# 🧠 System Pipeline
+1. YOLO detects objects
+2. DeepSORT assigns track IDs
+3. Kalman filter smooths motion
+4. PID aligns object center
+5. Distance/Velocity/Angle computed
+6. Distance graph generated
+7. CSV logged per object
+
+---
+
+# 🚀 Future Add-ons
+- Multi-camera fusion
+- 3D triangulation
+- Drone autopilot via MAVSDK
+- Web dashboard
+- TensorRT optimization
+- ReID deep features for better DeepSORT
 
 ---
 
@@ -216,6 +232,5 @@ MIT License
 ---
 
 # 💬 Support
-Need help or want to add new features?  
-Feel free to ask anytime!
+Need help with upgrades, enhancements, or debugging? I’m here to help!
 
