@@ -216,6 +216,24 @@ Steps:
 
 ---
 
+## 🔗 Multi-Camera Fusion (Full Global Tracking)
+
+This project supports **global fusion** of multiple camera streams into a single tracker by projecting image detections to a common **world plane** via homographies.
+
+### How it works
+1. Compute a homography H (3×3) for each camera mapping image pixel coordinates to the world plane (usually the ground plane). Homography should map image points (x,y) → (X,Y) in meters.
+2. Save each homography as a numpy `.npy` file (3x3 matrix) under the `cal/` folder (e.g., `cal/cam0_H.npy`).
+3. Edit `src/utils/config.py` and add each camera entry with `homography` pointing to the `.npy` file.
+4. Run the fusion script:
+```
+python src/main_multi_camera.py
+```
+
+You can also force fusion mode or device:
+```
+python src/main_multi_camera.py --fusion homography --device cpu
+```
+
 # 🚀 Future Add-ons
 - Multi-camera fusion
 - 3D triangulation
