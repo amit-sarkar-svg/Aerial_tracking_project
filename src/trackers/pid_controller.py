@@ -1,31 +1,25 @@
+# src/trackers/pid_controller.py
 import time
 
 class PID:
-    def __init__(self, kp, ki, kd):
-        self.Kp = kp
-        self.Ki = ki
-        self.Kd = kd
-
-        self.last_error = 0
-        self.integral = 0
-        self.last_time = None
+    def __init__(self, Kp=0.05, Ki=0.0, Kd=0.01):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self._last = 0.0
+        self._int = 0.0
+        self._last_time = None
 
     def compute(self, error):
         now = time.time()
-        if self.last_time is None:
-            dt = 0.01
+        if self._last_time is None:
+            dt = 0.0
         else:
-            dt = now - self.last_time
+            dt = now - self._last_time
+        self._last_time = now
 
-        self.integral += error * dt
-        derivative = (error - self.last_error) / dt
-
-        output = (
-            self.Kp * error
-            + self.Ki * self.integral
-            + self.Kd * derivative
-        )
-
-        self.last_error = error
-        self.last_time = now
-        return output
+        self._int += error * dt if dt>0 else 0.0
+        deriv = (error - self._last)/dt if dt>0 else 0.0
+        out = self.Kp*error + self.Ki*self._int + self.Kd*deriv
+        self._last = error
+        return out
