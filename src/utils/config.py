@@ -12,10 +12,23 @@ PID_KD = 0.01
 #   homography: path to .npy file containing 3x3 homography (image -> world plane). If None, no homography used.
 # Example:
 CAMERAS = [
-    {"id": 0, "source": 0, "homography": "cal/cam0_H.npy"},
-    {"id": 1, "source": 1, "homography": "cal/cam1_H.npy"},
-    # Add more cameras as needed...
+    {
+        "id": 0,
+        "source": "http://192.168.91.150:8080/video",   # Phone 1 camera URL
+        "homography": "cal/cam0_H.npy"
+    },
+    {
+        "id": 1,
+        "source": "http://192.168.1.102:4747/video",   # Phone 2 camera URL
+        "homography": "cal/cam1_H.npy"
+    },
+    {
+        "id": 2,
+        "source": 0,                                   # Laptop webcam
+        "homography": "cal/cam2_H.npy"
+    }
 ]
+
 
 # Fusion mode: "homography" to fuse via world-plane mapping;
 # If homography files are missing or set to None for any camera, fusion will fall back to per-camera tracking only.
