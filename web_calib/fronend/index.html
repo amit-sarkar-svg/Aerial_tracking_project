@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Calibration Capture — Aerial Tracking</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <h1>Calibration Capture — Aerial Tracking</h1>
+  <div class="muted">Capture clean checkerboard frames for camera calibration. Saves images locally.</div>
+
+  <div id="controls">
+    <button id="startBtn">Start Camera</button>
+    <button id="stopBtn" disabled>Stop Camera</button>
+    <button id="captureBtn" disabled>Capture Frame</button>
+    <button id="downloadAllBtn" disabled>Download All</button>
+
+    <label>Pattern rows (inner): <input id="rows" type="number" value="6" min="3"></label>
+    <label>Pattern cols (inner): <input id="cols" type="number" value="7" min="3"></label>
+    <label>Square size (mm): <input id="sq" type="number" value="25"></label>
+  </div>
+
+  <div id="videoWrap">
+    <video id="videoEl" autoplay playsinline></video>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <div id="savedList">
+    <h3>Captured frames</h3>
+    <ul id="frames"></ul>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

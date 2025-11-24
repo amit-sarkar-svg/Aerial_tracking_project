@@ -1,0 +1,65 @@
+body {
+  font-family: Inter, Arial, sans-serif;
+  margin: 18px;
+  color: #111;
+  background: #f7f8fb;
+}
+
+h1 {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+#controls {
+  margin-bottom: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+}
+
+#videoWrap {
+  position: relative;
+  display: inline-block;
+  border: 1px solid #ddd;
+}
+
+video {
+  display: block;
+  width: 640px;
+  height: 480px;
+  background: #000;
+}
+
+canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+#savedList {
+  margin-top: 12px;
+}
+
+label {
+  font-size: 13px;
+}
+
+input[type="number"] {
+  width: 70px;
+  padding: 6px;
+}
+
+.muted {
+  color: #666;
+  font-size: 13px;
+}

@@ -1,0 +1,16 @@
+# Python / backend
+__pycache__/
+*.pyc
+venv/
+.env
+
+# node / frontend
+node_modules/
+dist/
+
+# temporary files
+.DS_Store
+*.log
+
+# saved captures
+cal_images/
