@@ -1,18 +1,30 @@
-# =================== CORE DEEP LEARNING ===================
+# ---- Core Vision & Math ----
+opencv-python==4.8.1.78
+numpy<2        # avoid numpy 2.x errors with cv2 & torch
 
-# PyTorch + CPU wheels (must be installed manually first)
-# Run this manually:
-# pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
+# ---- Deep Learning (CPU) ----
+# Torch pinned to stable version that works with YOLOv8 and DeepSORT
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
+--index-url https://download.pytorch.org/whl/cpu
 
-# =================== YOLOv8 ===================
+# ---- YOLO (Ultralytics) ----
 ultralytics==8.1.0
 
-# =================== Computer Vision ===================
-opencv-python==4.9.0.80
-numpy==1.26.4
-imutils==0.5.4
+# ---- DeepSORT Dependencies ----
+scikit-learn==1.3.2
+filterpy==1.4.5
 
-# =================== Optional (safe) ===================
-# pillow
-# matplotlib
-# psutil
+# ---- Utilities & Tools ----
+matplotlib==3.7.2
+pandas==2.1.4
+pyyaml==6.0.1
+
+# ---- 3D Reconstruction (optional, but useful) ----
+open3d==0.17.0
+
+# ---- Logging & CSV ----
+python-dateutil==2.8.2
+
+# ---- Performance ----
+lapx==0.5.2

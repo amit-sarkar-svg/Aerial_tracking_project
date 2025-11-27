@@ -1,42 +1,26 @@
 # src/utils/config.py
+# Configuration shared across the project
 
-# PID defaults
+# PID defaults (kept from previous)
 PID_KP = 0.05
 PID_KI = 0.0
 PID_KD = 0.01
 
-# Multi-camera configuration (list of cameras)
-# Each camera: dict with keys:
-#   id: integer id
-#   source: camera source string or int (0, 1, "rtsp://...", or "videos/cam0.mp4")
-#   homography: path to .npy file containing 3x3 homography (image -> world plane). If None, no homography used.
-# Example:
+# Multi-camera configuration
+# Edit 'source' values to your phone URLs or webcam index.
+# If your phone URL changes between runs (dynamic), leave it as placeholder and update before running.
 CAMERAS = [
-    {
-        "id": 0,
-        "source": "http://192.168.91.150:8080/video",   # Phone 1 camera URL
-        "homography": "cal/cam0_H.npy"
-    },
-    {
-        "id": 1,
-        "source": "http://192.168.1.102:4747/video",   # Phone 2 camera URL
-        "homography": "cal/cam1_H.npy"
-    },
-    {
-        "id": 2,
-        "source": 0,                                   # Laptop webcam
-        "homography": "cal/cam2_H.npy"
-    }
+    {"id": 0, "source": "http://192.168.91.150:8080/video", "homography": "cal/cam0_H.npy"},
+    {"id": 1, "source": "http://192.168.1.102:8080/video", "homography": "cal/cam1_H.npy"},
+    {"id": 2, "source": 0, "homography": "cal/cam2_H.npy"},  # laptop webcam index 0
 ]
 
+# Fusion mode: 'homography' requires cal/*.npy homography files to exist
+FUSION_MODE = "homography"
 
-# Fusion mode: "homography" to fuse via world-plane mapping;
-# If homography files are missing or set to None for any camera, fusion will fall back to per-camera tracking only.
-FUSION_MODE = "homography"  # or "independent"
-
-# Global DeepSort parameters
+# DeepSort / tracker defaults (kept for compatibility)
 DEEPSORT_MAX_AGE = 30
 DEEPSORT_IOU_THRESHOLD = 0.3
 
-# Output fused log
+# Output fused log path
 FUSED_LOG_PATH = "src/logs/fused_log.csv"
